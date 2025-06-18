@@ -157,6 +157,119 @@
 
   updateUI();
 </script>
+<div id="editScreen" style="display:none; max-width:600px; margin:auto; padding:1em;">
+  <h2>Edit Tasks</h2>
+  <div id="editTaskList"></div>
+  <button onclick="addTask()">+ Add Task</button>
+  <br/><br/>
+  <button onclick="saveTasks()">Save & Return</button>
+  <button onclick="cancelEdit()">Cancel</button>
+</div>
 
+<script>
+  // Keep tasks as an object or load from localStorage
+  let tasks = JSON.parse(localStorage.getItem('tasks')) || {
+    "Washing Towels": { pts: 1, icon: "🧺" },
+    "Meds on time": { pts: 2, icon: "💊" },
+    "Full Shower": { pts: 2, icon: "🚿" },
+    "Reading your book": { pts: 2, icon: "📚" },
+    "Waking up before 9:30": { pts: 2, icon: "⏰" },
+    "Brushing Teeth": { pts: 3, icon: "🦷" },
+    "Skin Care Routine": { pts: 3, icon: "🧴" },
+    "Changing Bedding": { pts: 3, icon: "🛏️" },
+    "Putting all Clothes away": { pts: 3, icon: "👕" },
+    "Watching a TV Show": { pts: 3, icon: "📺" },
+    "Eating 3 meals": { pts: 4, icon: "🍽️" },
+    "Watching a Film": { pts: 4, icon: "🎬" },
+    "Washing Dishes": { pts: 4, icon: "🍽️" },
+    "Going to Gym": { pts: 8, icon: "🏋️" }
+  };
+
+  // Show edit screen
+  function goToEdit() {
+    document.getElementById('editScreen').style.display = 'block';
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('taskGrid').style.display = 'none';
+    document.getElementById('edit-tasks-btn').style.display = 'none';
+    renderEditList();
+  }
+
+  // Render the editable task list with inputs
+  function renderEditList() {
+    const container = document.getElementById('editTaskList');
+    container.innerHTML = '';
+    for (const [taskName, data] of Object.entries(tasks)) {
+      const div = document.createElement('div');
+      div.style.marginBottom = '1em';
+
+      div.innerHTML = `
+        <input type="text" value="${taskName}" class="edit-task-name" style="width:45%" />
+        <input type="number" min="1" value="${data.pts}" class="edit-task-pts" style="width:20%" />
+        <input type="text" value="${data.icon}" maxlength="2" class="edit-task-icon" style="width:20%" />
+        <button onclick="deleteTask('${taskName}')">Delete</button>
+      `;
+      container.appendChild(div);
+    }
+  }
+
+  // Add blank task input fields
+  function addTask() {
+    const container = document.getElementById('editTaskList');
+    const div = document.createElement('div');
+    div.style.marginBottom = '1em';
+
+    div.innerHTML = `
+      <input type="text" placeholder="Task Name" class="edit-task-name" style="width:45%" />
+      <input type="number" min="1" placeholder="Points" class="edit-task-pts" style="width:20%" />
+      <input type="text" placeholder="Emoji" maxlength="2" class="edit-task-icon" style="width:20%" />
+      <button onclick="this.parentElement.remove()">Delete</button>
+    `;
+    container.appendChild(div);
+  }
+
+  // Delete a task by name (from current tasks object)
+  function deleteTask(name) {
+    if (confirm(`Delete task "${name}"?`)) {
+      delete tasks[name];
+      renderEditList();
+    }
+  }
+
+  // Save edited tasks and return to main screen
+  function saveTasks() {
+    const names = document.querySelectorAll('.edit-task-name');
+    const pts = document.querySelectorAll('.edit-task-pts');
+    const icons = document.querySelectorAll('.edit-task-icon');
+
+    let newTasks = {};
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i].value.trim();
+      const point = parseInt(pts[i].value);
+      const icon = icons[i].value.trim() || '❓';
+      if (name && point > 0) {
+        newTasks[name] = { pts: point, icon: icon };
+      }
+    }
+    tasks = newTasks;
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+    exitEdit();
+    updateUI();  // Rebuild main screen with updated tasks
+  }
+
+  // Cancel editing (discard changes)
+  function cancelEdit() {
+    if (confirm('Discard changes?')) {
+      exitEdit();
+    }
+  }
+
+  // Hide edit screen, show main UI
+  function exitEdit() {
+    document.getElementById('editScreen').style.display = 'none';
+    document.getElementById('status').style.display = 'flex';
+    document.getElementById('taskGrid').style.display = 'grid';
+    document.getElementById('edit-tasks-btn').style.display = 'block';
+  }
+</script>
 </body>
 </html>
