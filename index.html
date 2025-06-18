@@ -1,214 +1,141 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reward Chart</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 480px; margin: auto; }
-    .button { padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; margin: 10px 0; display: inline-block; }
-    .small-btn { padding: 5px 8px; font-size: 0.9em; background: #f44336; color: white; border: none; cursor: pointer; }
-    .task-row { margin: 8px 0; display: flex; gap: 10px; align-items: center; }
-    input[type="text"], input[type="number"] { padding: 5px; font-size: 1em; width: 150px; }
-    #mainView, #editView { display: none; } 
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1em;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    .task-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1em 0;
+    }
+    .task-list li {
+      margin: 0.5em 0;
+      font-size: 1.1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    button {
+      padding: 0.8em 1.5em;
+      font-size: 1.2rem;
+      margin: 0.3em 0;
+      width: auto;
+      cursor: pointer;
+    }
+    #edit-tasks-btn {
+      display: block;
+      margin: 1em auto;
+      width: 50%;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 600px) {
+      body {
+        padding: 1em 0.5em;
+      }
+      button {
+        width: 100%;
+        font-size: 1.3rem;
+        margin: 0.5em 0;
+      }
+      .task-list li {
+        font-size: 1.2rem;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
-  <!-- Main Screen -->
-  <div id="mainView">
-    <h1>Reward Chart</h1>
-    <div id="points">Points: 0</div>
-    <div id="stars">Stars: 0</div>
-    <hr>
-    <div id="task-list"></div>
-    <button id="resetBtn" class="button">Reset</button>
-    <br>
-    <button id="goToEdit" class="button" style="background:#2196F3;">Edit Tasks</button>
-  </div>
-
-  <!-- Edit Screen -->
-  <div id="editView">
-    <h1>Edit Tasks</h1>
-    <div id="editTasks"></div>
-    <h3>Add New Task</h3>
-    <input type="text" id="newTaskName" placeholder="Task Name" />
-    <input type="number" id="newTaskPoints" placeholder="Points" min="1" />
-    <button id="addTaskBtn" class="button">Add Task</button>
-    <br><br>
-    <button id="backToMain" class="button" style="background:#777;">Back</button>
-  </div>
+  <h1>Reward Chart</h1>
+  <ul class="task-list" id="taskList"></ul>
+  <button id="edit-tasks-btn" onclick="goToEdit()">Edit Tasks</button>
 
   <script>
-    let tasks = [];
-    const STAR_THRESHOLD = 20;
-
-    let totalPoints = 0;
-    let totalStars = 0;
-
-    function loadFromStorage() {
-      const savedData = JSON.parse(localStorage.getItem("rewardData"));
-      if (savedData) {
-        totalPoints = savedData.points || 0;
-        totalStars = savedData.stars || 0;
-      }
-      const savedTasks = JSON.parse(localStorage.getItem("tasks"));
-      if (savedTasks && Array.isArray(savedTasks)) {
-        tasks = savedTasks;
-      } else {
-        tasks = [
-          { name: "Washing Towels", points: 1 },
-          { name: "Meds on time", points: 2 },
-          { name: "Full Shower", points: 2 },
-          { name: "Reading your book", points: 2 },
-          { name: "Waking up before 9:30", points: 2 },
-          { name: "Brushing Teeth", points: 3 },
-          { name: "Skin Care Routine", points: 3 },
-          { name: "Changing Bedding", points: 3 },
-          { name: "Putting all Clothes away", points: 3 },
-          { name: "Watching a TV Show", points: 3 },
-          { name: "Eating 3 meals", points: 4 },
-          { name: "Watching a Film", points: 4 },
-          { name: "Washing Dishes", points: 4 },
-          { name: "Going to Gym", points: 8 }
-        ];
-      }
-    }
-
-    function saveToStorage() {
-      localStorage.setItem("rewardData", JSON.stringify({
-        points: totalPoints,
-        stars: totalStars
-      }));
-      localStorage.setItem("tasks", JSON.stringify(tasks));
-    }
-
-    function updateDisplay() {
-      document.getElementById("points").textContent = `Points: ${totalPoints}`;
-      document.getElementById("stars").textContent = `Stars: ${totalStars}`;
-    }
-
-    function addPoints(pts) {
-      totalPoints += pts;
-      while (totalPoints >= STAR_THRESHOLD) {
-        totalStars += 1;
-        totalPoints -= STAR_THRESHOLD;
-      }
-      updateDisplay();
-      saveToStorage();
-    }
-
-    function resetChart() {
-      totalPoints = 0;
-      totalStars = 0;
-      updateDisplay();
-      saveToStorage();
-    }
-
-    function renderTasks() {
-      const container = document.getElementById("task-list");
-      container.innerHTML = "";
-      tasks.forEach((task, index) => {
-        const btn = document.createElement("button");
-        btn.className = "button";
-        btn.textContent = `${task.name} (+${task.points})`;
-        btn.onclick = () => addPoints(task.points);
-        container.appendChild(btn);
-        container.appendChild(document.createElement("br"));
-      });
-    }
-
-    function renderEditTasks() {
-      const container = document.getElementById("editTasks");
-      container.innerHTML = "";
-      tasks.forEach((task, index) => {
-        const row = document.createElement("div");
-        row.className = "task-row";
-
-        const nameInput = document.createElement("input");
-        nameInput.type = "text";
-        nameInput.value = task.name;
-        nameInput.oninput = e => {
-          tasks[index].name = e.target.value;
-          saveToStorage();
-          renderTasks();
-        };
-
-        const pointsInput = document.createElement("input");
-        pointsInput.type = "number";
-        pointsInput.min = 1;
-        pointsInput.value = task.points;
-        pointsInput.style.width = "60px";
-        pointsInput.oninput = e => {
-          let val = parseInt(e.target.value, 10);
-          if (isNaN(val) || val < 1) val = 1;
-          tasks[index].points = val;
-          saveToStorage();
-          renderTasks();
-        };
-
-        const delBtn = document.createElement("button");
-        delBtn.className = "small-btn";
-        delBtn.textContent = "Delete";
-        delBtn.onclick = () => {
-          tasks.splice(index, 1);
-          saveToStorage();
-          renderEditTasks();
-          renderTasks();
-        };
-
-        row.appendChild(nameInput);
-        row.appendChild(pointsInput);
-        row.appendChild(delBtn);
-        container.appendChild(row);
-      });
-    }
-
-    // Screen toggling
-    function showMain() {
-      document.getElementById("mainView").style.display = "block";
-      document.getElementById("editView").style.display = "none";
-    }
-    function showEdit() {
-      document.getElementById("mainView").style.display = "none";
-      document.getElementById("editView").style.display = "block";
-      renderEditTasks();
-    }
-
-    document.getElementById("goToEdit").onclick = showEdit;
-    document.getElementById("backToMain").onclick = () => {
-      saveToStorage();
-      renderTasks();
-      updateDisplay();
-      showMain();
+    // Tasks and points
+    let tasks = {
+      "Washing Towels": 1,
+      "Meds on time": 2,
+      "Full Shower": 2,
+      "Reading your book": 2,
+      "Waking up before 9:30": 2,
+      "Brushing Teeth": 3,
+      "Skin Care Routine": 3,
+      "Changing Bedding": 3,
+      "Putting all Clothes away": 3,
+      "Watching a TV Show": 3,
+      "Eating 3 meals": 4,
+      "Watching a Film": 4,
+      "Washing Dishes": 4,
+      "Going to Gym": 8
     };
 
-    document.getElementById("addTaskBtn").onclick = () => {
-      const nameInput = document.getElementById("newTaskName");
-      const pointsInput = document.getElementById("newTaskPoints");
-      const name = nameInput.value.trim();
-      let points = parseInt(pointsInput.value, 10);
+    // Load from localStorage or initialize
+    let points = parseInt(localStorage.getItem('points')) || 0;
+    let stars = parseInt(localStorage.getItem('stars')) || 0;
+    let savedTasks = JSON.parse(localStorage.getItem('tasks'));
+    if (savedTasks) tasks = savedTasks;
 
-      if (!name) {
-        alert("Task name cannot be empty.");
-        return;
+    const taskList = document.getElementById('taskList');
+
+    function saveData() {
+      localStorage.setItem('points', points);
+      localStorage.setItem('stars', stars);
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function updateUI() {
+      taskList.innerHTML = '';
+      for (const [task, pts] of Object.entries(tasks)) {
+        const li = document.createElement('li');
+        li.textContent = `${task} — ${pts} pt${pts > 1 ? 's' : ''}`;
+
+        const btn = document.createElement('button');
+        btn.textContent = 'Done';
+        btn.onclick = () => {
+          points += pts;
+          if (points >= 20) {
+            stars++;
+            points -= 20;
+            alert('⭐ Star earned! ⭐');
+          }
+          saveData();
+          updateUI();
+        };
+
+        li.appendChild(btn);
+        taskList.appendChild(li);
       }
-      if (isNaN(points) || points < 1) {
-        alert("Points must be a positive number.");
-        return;
+
+      // Show points and stars
+      const footer = document.getElementById('footer');
+      if (!footer) {
+        const f = document.createElement('div');
+        f.id = 'footer';
+        f.style.marginTop = '1em';
+        f.style.textAlign = 'center';
+        document.body.appendChild(f);
       }
+      document.getElementById('footer').textContent = `Points: ${points} | Stars: ${stars}`;
+    }
 
-      tasks.push({ name, points });
-      saveToStorage();
-      renderEditTasks();
-      nameInput.value = "";
-      pointsInput.value = "";
-    };
+    function goToEdit() {
+      alert('Editing tasks not yet implemented.');
+      // Placeholder for your edit screen navigation
+    }
 
-    document.getElementById("resetBtn").onclick = resetChart;
-
-    // Initialize
-    loadFromStorage();
-    renderTasks();
-    updateDisplay();
-    showMain();
+    updateUI();
   </script>
 </body>
 </html>
