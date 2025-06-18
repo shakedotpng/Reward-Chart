@@ -1,141 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reward Chart</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 1em;
-      max-width: 600px;
-      margin: auto;
-    }
-    h1 {
-      text-align: center;
-    }
-    .task-list {
-      list-style: none;
-      padding: 0;
-      margin: 0 0 1em 0;
-    }
-    .task-list li {
-      margin: 0.5em 0;
-      font-size: 1.1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    button {
-      padding: 0.8em 1.5em;
-      font-size: 1.2rem;
-      margin: 0.3em 0;
-      width: auto;
-      cursor: pointer;
-    }
-    #edit-tasks-btn {
-      display: block;
-      margin: 1em auto;
-      width: 50%;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reward Chart</title>
+<style>
+  body {
+    max-width: 600px;
+    margin: auto;
+    font-family: Arial, sans-serif;
+    padding: 1em;
+  }
+  #status {
+    display: flex;
+    justify-content: space-around;
+    font-size: 1.4rem;
+    margin-bottom: 1em;
+  }
+  #taskGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1em;
+  }
+  .task-btn {
+    background: #f0f0f0;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 1em;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+  .task-btn:hover {
+    border-color: #888;
+  }
+  .task-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5em;
+  }
+  #edit-tasks-btn {
+    margin-top: 1em;
+    width: 100%;
+    padding: 1em;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
 
-    /* Responsive tweaks */
-    @media (max-width: 600px) {
-      body {
-        padding: 1em 0.5em;
-      }
-      button {
-        width: 100%;
-        font-size: 1.3rem;
-        margin: 0.5em 0;
-      }
-      .task-list li {
-        font-size: 1.2rem;
-        flex-direction: column;
-        align-items: flex-start;
-      }
-    }
-  </style>
+  /* Modal styles */
+  #modal {
+    display: none;
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+  }
+  #modalContent {
+    background: white;
+    padding: 2em;
+    border-radius: 10px;
+    max-width: 90%;
+    text-align: center;
+  }
+  #modal button {
+    margin-top: 1em;
+    padding: 0.5em 1.5em;
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
-  <h1>Reward Chart</h1>
-  <ul class="task-list" id="taskList"></ul>
-  <button id="edit-tasks-btn" onclick="goToEdit()">Edit Tasks</button>
 
-  <script>
-    // Tasks and points
-    let tasks = {
-      "Washing Towels": 1,
-      "Meds on time": 2,
-      "Full Shower": 2,
-      "Reading your book": 2,
-      "Waking up before 9:30": 2,
-      "Brushing Teeth": 3,
-      "Skin Care Routine": 3,
-      "Changing Bedding": 3,
-      "Putting all Clothes away": 3,
-      "Watching a TV Show": 3,
-      "Eating 3 meals": 4,
-      "Watching a Film": 4,
-      "Washing Dishes": 4,
-      "Going to Gym": 8
-    };
+<div id="status">
+  <div>⭐ Stars: <span id="starsCount">0</span></div>
+  <div>Points: <span id="pointsCount">0</span></div>
+</div>
 
-    // Load from localStorage or initialize
-    let points = parseInt(localStorage.getItem('points')) || 0;
-    let stars = parseInt(localStorage.getItem('stars')) || 0;
-    let savedTasks = JSON.parse(localStorage.getItem('tasks'));
-    if (savedTasks) tasks = savedTasks;
+<div id="taskGrid"></div>
 
-    const taskList = document.getElementById('taskList');
+<button id="edit-tasks-btn" onclick="goToEdit()">Edit Tasks</button>
 
-    function saveData() {
-      localStorage.setItem('points', points);
-      localStorage.setItem('stars', stars);
-      localStorage.setItem('tasks', JSON.stringify(tasks));
+<!-- Custom modal for messages -->
+<div id="modal">
+  <div id="modalContent">
+    <div id="modalMessage"></div>
+    <button onclick="closeModal()">OK</button>
+  </div>
+</div>
+
+<script>
+  const tasks = {
+    "Washing Towels": { pts: 1, icon: "🧺" },
+    "Meds on time": { pts: 2, icon: "💊" },
+    "Full Shower": { pts: 2, icon: "🚿" },
+    "Reading your book": { pts: 2, icon: "📚" },
+    "Waking up before 9:30": { pts: 2, icon: "⏰" },
+    "Brushing Teeth": { pts: 3, icon: "🦷" },
+    "Skin Care Routine": { pts: 3, icon: "🧴" },
+    "Changing Bedding": { pts: 3, icon: "🛏️" },
+    "Putting all Clothes away": { pts: 3, icon: "👕" },
+    "Watching a TV Show": { pts: 3, icon: "📺" },
+    "Eating 3 meals": { pts: 4, icon: "🍽️" },
+    "Watching a Film": { pts: 4, icon: "🎬" },
+    "Washing Dishes": { pts: 4, icon: "🍽️" },
+    "Going to Gym": { pts: 8, icon: "🏋️" }
+  };
+
+  let points = parseInt(localStorage.getItem('points')) || 0;
+  let stars = parseInt(localStorage.getItem('stars')) || 0;
+
+  function saveData() {
+    localStorage.setItem('points', points);
+    localStorage.setItem('stars', stars);
+  }
+
+  function updateUI() {
+    document.getElementById('pointsCount').textContent = points;
+    document.getElementById('starsCount').textContent = stars;
+
+    const grid = document.getElementById('taskGrid');
+    grid.innerHTML = '';
+
+    for (const [task, data] of Object.entries(tasks)) {
+      const btn = document.createElement('button');
+      btn.className = 'task-btn';
+      btn.innerHTML = `<div class="task-icon">${data.icon}</div><div>${task}</div><small>${data.pts} pts</small>`;
+      btn.onclick = () => {
+        points += data.pts;
+        if (points >= 20) {
+          stars++;
+          points -= 20;
+          showModal('⭐ Star earned! ⭐');
+        }
+        saveData();
+        updateUI();
+      };
+      grid.appendChild(btn);
     }
+  }
 
-    function updateUI() {
-      taskList.innerHTML = '';
-      for (const [task, pts] of Object.entries(tasks)) {
-        const li = document.createElement('li');
-        li.textContent = `${task} — ${pts} pt${pts > 1 ? 's' : ''}`;
+  function goToEdit() {
+    showModal('Edit screen not yet implemented.');
+  }
 
-        const btn = document.createElement('button');
-        btn.textContent = 'Done';
-        btn.onclick = () => {
-          points += pts;
-          if (points >= 20) {
-            stars++;
-            points -= 20;
-            alert('⭐ Star earned! ⭐');
-          }
-          saveData();
-          updateUI();
-        };
+  // Modal control
+  function showModal(msg) {
+    document.getElementById('modalMessage').textContent = msg;
+    document.getElementById('modal').style.display = 'flex';
+  }
+  function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+  }
 
-        li.appendChild(btn);
-        taskList.appendChild(li);
-      }
+  updateUI();
+</script>
 
-      // Show points and stars
-      const footer = document.getElementById('footer');
-      if (!footer) {
-        const f = document.createElement('div');
-        f.id = 'footer';
-        f.style.marginTop = '1em';
-        f.style.textAlign = 'center';
-        document.body.appendChild(f);
-      }
-      document.getElementById('footer').textContent = `Points: ${points} | Stars: ${stars}`;
-    }
-
-    function goToEdit() {
-      alert('Editing tasks not yet implemented.');
-      // Placeholder for your edit screen navigation
-    }
-
-    updateUI();
-  </script>
 </body>
 </html>
