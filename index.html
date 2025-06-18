@@ -144,11 +144,20 @@ async function loadData() {
   setLoading(true);
   try {
     const doc = await db.collection('rewardChart').doc('state').get();
-    if(doc.exists){
+    if (doc.exists) {
       const data = doc.data();
       points = data.points || 0;
       stars = data.stars || 0;
-      tasks = data.tasks || tasks;
+      // Use Firestore tasks only if not empty, else keep default tasks
+      tasks = data.tasks && Object.keys(data.tasks).length > 0 ? data.tasks : tasks;
+    }
+  } catch(e) {
+    console.error("Error loading data:", e);
+    showModal("Error loading data. Check console.");
+  }
+  setLoading(false);
+  updateUI();
+}
     }
   } catch(e) {
     console.error("Error loading data:", e);
