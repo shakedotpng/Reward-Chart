@@ -48,8 +48,6 @@
     font-size: 1.2rem;
     cursor: pointer;
   }
-
-  /* Modal styles */
   #modal {
     display: none;
     position: fixed;
@@ -70,42 +68,35 @@
     padding: 0.5em 1.5em;
     cursor: pointer;
   }
-
-  /* Edit screen */
-  #editScreen {
-    display: none;
-    max-width: 600px;
-    margin: auto;
-    padding: 1em;
-  }
-  #editTaskList div {
-    margin-bottom: 1em;
-  }
-  #editTaskList input {
-    margin-right: 0.5em;
+  #loading {
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    z-index: 1000;
   }
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-
-<div id="status">
+<div id="loading">Loading data...</div>
+<div id="status" style="display:none;">
   <div>⭐ Stars: <span id="starsCount">0</span></div>
   <div>Points: <span id="pointsCount">0</span></div>
 </div>
-
-<div id="taskGrid"></div>
-
-<button id="edit-tasks-btn" onclick="goToEdit()">Edit Tasks</button>
-
-<!-- Custom modal for messages -->
+<div id="taskGrid" style="display:none;"></div>
+<button id="edit-tasks-btn" onclick="goToEdit()" style="display:none;">Edit Tasks</button>
 <div id="modal">
   <div id="modalContent">
     <div id="modalMessage"></div>
     <button onclick="closeModal()">OK</button>
   </div>
 </div>
-
-<div id="editScreen">
+<div id="editScreen" style="display:none; max-width:600px; margin:auto; padding:1em;">
   <h2>Edit Tasks</h2>
   <div id="editTaskList"></div>
   <button onclick="addTask()">+ Add Task</button>
@@ -113,145 +104,157 @@
   <button onclick="saveTasks()">Save & Return</button>
   <button onclick="cancelEdit()">Cancel</button>
 </div>
-
 <script>
-  // Load tasks from localStorage or default
-  let tasks = JSON.parse(localStorage.getItem('tasks')) || {
-    "Washing Towels": { pts: 1, icon: "🧺" },
-    "Meds on time": { pts: 2, icon: "💊" },
-    "Full Shower": { pts: 2, icon: "🚿" },
-    "Reading your book": { pts: 2, icon: "📚" },
-    "Waking up before 9:30": { pts: 2, icon: "⏰" },
-    "Brushing Teeth": { pts: 3, icon: "🦷" },
-    "Skin Care Routine": { pts: 3, icon: "🧴" },
-    "Changing Bedding": { pts: 3, icon: "🛏️" },
-    "Putting all Clothes away": { pts: 3, icon: "👕" },
-    "Watching a TV Show": { pts: 3, icon: "📺" },
-    "Eating 3 meals": { pts: 4, icon: "🍽️" },
-    "Watching a Film": { pts: 4, icon: "🎬" },
-    "Washing Dishes": { pts: 4, icon: "🍽️" },
-    "Going to Gym": { pts: 8, icon: "🏋️" }
-  };
-
-  let points = parseInt(localStorage.getItem('points')) || 0;
-  let stars = parseInt(localStorage.getItem('stars')) || 0;
-
-  function saveData() {
-    localStorage.setItem('points', points);
-    localStorage.setItem('stars', stars);
-  }
-
-  function updateUI() {
-    document.getElementById('pointsCount').textContent = points;
-    document.getElementById('starsCount').textContent = stars;
-
-    const grid = document.getElementById('taskGrid');
-    grid.innerHTML = '';
-
-    for (const [task, data] of Object.entries(tasks)) {
-      const btn = document.createElement('button');
-      btn.className = 'task-btn';
-      btn.innerHTML = `<div class="task-icon">${data.icon}</div><div>${task}</div><small>${data.pts} pts</small>`;
-      btn.onclick = () => {
-        points += data.pts;
-        if (points >= 20) {
-          stars++;
-          points -= 20;
-          showModal('⭐ Star earned! ⭐');
-        }
-        saveData();
-        updateUI();
-      };
-      grid.appendChild(btn);
+const firebaseConfig = {
+  apiKey: "AIzaSyCcRx3ajCTZ5v65mA4wkFgiCbYT18U4C4E",
+  authDomain: "reward-chart-24ae0.firebaseapp.com",
+  projectId: "reward-chart-24ae0",
+  storageBucket: "reward-chart-24ae0.firebasestorage.app",
+  messagingSenderId: "146719860277",
+  appId: "1:146719860277:web:91eb57e96955c9935bb37c",
+  measurementId: "G-ZTGPEXEBRK"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+let points = 0;
+let stars = 0;
+let tasks = {
+  "Washing Towels": { pts: 1, icon: "🮺" },
+  "Meds on time": { pts: 2, icon: "💊" },
+  "Full Shower": { pts: 2, icon: "🚿" },
+  "Reading your book": { pts: 2, icon: "📚" },
+  "Waking up before 9:30": { pts: 2, icon: "⏰" },
+  "Brushing Teeth": { pts: 3, icon: "🦷" },
+  "Skin Care Routine": { pts: 3, icon: "🧴" },
+  "Changing Bedding": { pts: 3, icon: "🛎️" },
+  "Putting all Clothes away": { pts: 3, icon: "👕" },
+  "Watching a TV Show": { pts: 3, icon: "📺" },
+  "Eating 3 meals": { pts: 4, icon: "🍽️" },
+  "Watching a Film": { pts: 4, icon: "🎬" },
+  "Washing Dishes": { pts: 4, icon: "🍽️" },
+  "Going to Gym": { pts: 8, icon: "🏋️" }
+};
+function setLoading(on) {
+  document.getElementById('loading').style.display = on ? 'flex' : 'none';
+  document.getElementById('status').style.display = on ? 'none' : 'flex';
+  document.getElementById('taskGrid').style.display = on ? 'none' : 'grid';
+  document.getElementById('edit-tasks-btn').style.display = on ? 'none' : 'block';
+}
+async function loadData() {
+  setLoading(true);
+  try {
+    const doc = await db.collection('rewardChart').doc('state').get();
+    if(doc.exists){
+      const data = doc.data();
+      points = data.points || 0;
+      stars = data.stars || 0;
+      tasks = data.tasks || tasks;
     }
+  } catch(e) {
+    console.error("Error loading data:", e);
+    showModal("Error loading data. Check console.");
   }
-
-  function goToEdit() {
-    document.getElementById('editScreen').style.display = 'block';
-    document.getElementById('status').style.display = 'none';
-    document.getElementById('taskGrid').style.display = 'none';
-    document.getElementById('edit-tasks-btn').style.display = 'none';
-    renderEditList();
+  setLoading(false);
+  updateUI();
+}
+async function saveData() {
+  try {
+    await db.collection('rewardChart').doc('state').set({ points, stars, tasks });
+  } catch(e) {
+    console.error("Error saving data:", e);
+    showModal("Error saving data. Check console.");
   }
-
-  function renderEditList() {
-    const container = document.getElementById('editTaskList');
-    container.innerHTML = '';
-    for (const [taskName, data] of Object.entries(tasks)) {
-      const div = document.createElement('div');
-      div.innerHTML = `
-        <input type="text" value="${taskName}" class="edit-task-name" style="width:45%" />
-        <input type="number" min="1" value="${data.pts}" class="edit-task-pts" style="width:20%" />
-        <input type="text" value="${data.icon}" maxlength="2" class="edit-task-icon" style="width:20%" />
-        <button onclick="deleteTask('${taskName}')">Delete</button>
-      `;
-      container.appendChild(div);
-    }
+}
+function updateUI() {
+  document.getElementById('pointsCount').textContent = points;
+  document.getElementById('starsCount').textContent = stars;
+  const grid = document.getElementById('taskGrid');
+  grid.innerHTML = '';
+  for (const [task, data] of Object.entries(tasks)) {
+    const btn = document.createElement('button');
+    btn.className = 'task-btn';
+    btn.innerHTML = `<div class="task-icon">${data.icon}</div><div>${task}</div><small>${data.pts} pts</small>`;
+    btn.onclick = async () => {
+      points += data.pts;
+      if (points >= 20) {
+        stars++;
+        points -= 20;
+        showModal('⭐ Star earned! ⭐');
+      }
+      await saveData();
+      updateUI();
+    };
+    grid.appendChild(btn);
   }
-
-  function addTask() {
-    const container = document.getElementById('editTaskList');
+}
+function showModal(msg) {
+  document.getElementById('modalMessage').textContent = msg;
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+function goToEdit() {
+  document.getElementById('editScreen').style.display = 'block';
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('taskGrid').style.display = 'none';
+  document.getElementById('edit-tasks-btn').style.display = 'none';
+  renderEditList();
+}
+function renderEditList() {
+  const container = document.getElementById('editTaskList');
+  container.innerHTML = '';
+  for (const [taskName, data] of Object.entries(tasks)) {
     const div = document.createElement('div');
+    div.style.marginBottom = '1em';
     div.innerHTML = `
-      <input type="text" placeholder="Task Name" class="edit-task-name" style="width:45%" />
-      <input type="number" min="1" placeholder="Points" class="edit-task-pts" style="width:20%" />
-      <input type="text" placeholder="Emoji" maxlength="2" class="edit-task-icon" style="width:20%" />
-      <button onclick="this.parentElement.remove()">Delete</button>
+      <input type="text" value="${taskName}" class="edit-task-name" style="width:45%" />
+      <input type="number" min="1" value="${data.pts}" class="edit-task-pts" style="width:20%" />
+      <input type="text" value="${data.icon}" class="edit-task-icon" style="width:20%" />
+      <button onclick="removeTask(this)">❌</button>
     `;
     container.appendChild(div);
   }
-
-  function deleteTask(name) {
-    if (confirm(`Delete task "${name}"?`)) {
-      delete tasks[name];
-      renderEditList();
+}
+function removeTask(btn) {
+  btn.parentElement.remove();
+}
+function addTask() {
+  const div = document.createElement('div');
+  div.style.marginBottom = '1em';
+  div.innerHTML = `
+    <input type="text" placeholder="Task name" class="edit-task-name" style="width:45%" />
+    <input type="number" min="1" value="1" class="edit-task-pts" style="width:20%" />
+    <input type="text" placeholder="Icon" class="edit-task-icon" style="width:20%" />
+    <button onclick="removeTask(this)">❌</button>
+  `;
+  document.getElementById('editTaskList').appendChild(div);
+}
+async function saveTasks() {
+  const names = document.querySelectorAll('.edit-task-name');
+  const pts = document.querySelectorAll('.edit-task-pts');
+  const icons = document.querySelectorAll('.edit-task-icon');
+  const newTasks = {};
+  for(let i = 0; i < names.length; i++) {
+    const name = names[i].value.trim();
+    const pt = parseInt(pts[i].value);
+    const icon = icons[i].value.trim() || "🎯";
+    if (name && pt > 0) {
+      newTasks[name] = { pts: pt, icon };
     }
   }
-
-  function saveTasks() {
-    const names = document.querySelectorAll('.edit-task-name');
-    const pts = document.querySelectorAll('.edit-task-pts');
-    const icons = document.querySelectorAll('.edit-task-icon');
-
-    let newTasks = {};
-    for (let i = 0; i < names.length; i++) {
-      const name = names[i].value.trim();
-      const point = parseInt(pts[i].value);
-      const icon = icons[i].value.trim() || '❓';
-      if (name && point > 0) {
-        newTasks[name] = { pts: point, icon: icon };
-      }
-    }
-    tasks = newTasks;
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-    exitEdit();
-    updateUI();
-  }
-
-  function cancelEdit() {
-    if (confirm('Discard changes?')) {
-      exitEdit();
-    }
-  }
-
-  function exitEdit() {
-    document.getElementById('editScreen').style.display = 'none';
-    document.getElementById('status').style.display = 'flex';
-    document.getElementById('taskGrid').style.display = 'grid';
-    document.getElementById('edit-tasks-btn').style.display = 'block';
-  }
-
-  // Modal control
-  function showModal(msg) {
-    document.getElementById('modalMessage').textContent = msg;
-    document.getElementById('modal').style.display = 'flex';
-  }
-  function closeModal() {
-    document.getElementById('modal').style.display = 'none';
-  }
-
+  tasks = newTasks;
+  await saveData();
+  cancelEdit();
   updateUI();
+}
+function cancelEdit() {
+  document.getElementById('editScreen').style.display = 'none';
+  document.getElementById('status').style.display = 'flex';
+  document.getElementById('taskGrid').style.display = 'grid';
+  document.getElementById('edit-tasks-btn').style.display = 'block';
+}
+loadData();
 </script>
-
 </body>
 </html>
